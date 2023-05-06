@@ -3,8 +3,8 @@ import './App.css';
 
 function App() {
 
-    const [size, setSize] = useState<number>(500)
-    const [view, setView] = useState<number[][]>( [...Array(size)].map(e => Array(size)))
+    const [center, setCenter] = useState({x: -100, y: -100})
+    const [size, setSize] = useState<number>(900)
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -22,25 +22,11 @@ function App() {
         return iteration;
     }
 
-    const draw = (context: CanvasRenderingContext2D) => {
-        const dot = (x: number, y: number, color: string) => {
-            context.fillStyle = color
-            context.fillRect(x, y, x + 10, y + 10)
-        }
-
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height)
-
-        for (let i = 0; i < context.canvas.width; i++) {
-            for (let j = 0; j < context.canvas.height; j++) {
-                dot(i, j, view[i][j] === 1000 ? 'black' : `#fff`)
-            }
-        }
+    const drawDot = (x: number, y: number, color: string) => {
+        const context = canvasRef.current!.getContext('2d')!
+        context.fillStyle = color
+        context.fillRect(x, y, 1, 1)
     }
-
-    useEffect(() => {
-        console.log('redraw')
-        draw(canvasRef.current!.getContext('2d')!)
-    }, [view])
 
     useEffect(() => {
         console.log('resize')
@@ -48,16 +34,21 @@ function App() {
 
         for (let x = 0; x < emptyView.length; x++) {
             for (let y = 0; y < emptyView[x].length; y++) {
-                emptyView[x][y] = calcMandelBrot(x / size, y / size)
+                emptyView[x][y] = calcMandelBrot((x + center.x) / size, (y + center.y) / size)
+                drawDot(x, y, emptyView[x][y] === 1000 ? 'black' : '#fff')
             }
         }
-
-        setView(emptyView)
-    }, [size])
+    }, [size, center])
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-            <input type='number' value={size} onChange={event => setSize(Number(event.target.value))}/>
+            <div>
+                <label>Size</label>
+                <input type='number' value={size} onChange={event => setSize(Number(event.target.value))}/>
+                <label>Center</label>
+                <input type='number' value={center.x} onChange={event => setCenter(prevState => ({...prevState, x: Number(event.target.value)}))}/>
+                <input type='number' value={center.y} onChange={event => setCenter(prevState => ({...prevState, y: Number(event.target.value)}))}/>
+            </div>
             <canvas ref={canvasRef} width={size} height={size} style={{border: "black 1px solid"}}/>
         </div>
     );
