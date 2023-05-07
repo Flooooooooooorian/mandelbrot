@@ -1,10 +1,19 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './App.css';
 
+type Settings = {
+    size: number,
+    center: {
+        x: number,
+        y: number
+    },
+    zoom: number
+}
+
 function App() {
 
-    const [center, setCenter] = useState({x: -100, y: -100})
-    const [size, setSize] = useState<number>(900)
+    const [settings, setSettings] = useState<Settings>({size: 900, center: {x: 0, y: 0}, zoom: 1})
+    const timerRef = useRef<NodeJS.Timeout | null>(null)
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -24,32 +33,72 @@ function App() {
 
     const drawDot = (x: number, y: number, color: string) => {
         const context = canvasRef.current!.getContext('2d')!
+
         context.fillStyle = color
         context.fillRect(x, y, 1, 1)
     }
 
-    useEffect(() => {
-        console.log('resize')
-        const emptyView = [...Array(size)].map(e => Array(size))
+    const reDraw = () => {
+        const emptyView = [...Array(settings.size)].map(e => Array(settings.size))
 
         for (let x = 0; x < emptyView.length; x++) {
             for (let y = 0; y < emptyView[x].length; y++) {
-                emptyView[x][y] = calcMandelBrot((x + center.x) / size, (y + center.y) / size)
+
+                const gridCooardinates = {
+                    x: ((x - settings.size / 2) / settings.size) / settings.zoom + (settings.center.x / settings.zoom),
+                    y: ((y - settings.size / 2) / settings.size) / settings.zoom + (settings.center.y / settings.zoom)
+                }
+                emptyView[x][y] = calcMandelBrot(gridCooardinates.x, gridCooardinates.y)
                 drawDot(x, y, emptyView[x][y] === 1000 ? 'black' : '#fff')
             }
         }
-    }, [size, center])
+
+        const context = canvasRef.current!.getContext('2d')!
+        context.fillStyle = 'red'
+        context.fillRect((settings.size / 2) - 2, (settings.size / 2) - 2, 4, 4)
+    }
+
+    useEffect(() => {
+        console.log('calc...')
+
+        if (timerRef.current) {
+            clearTimeout(timerRef.current)
+        }
+        timerRef.current = setTimeout(() => {
+            console.log('change')
+            reDraw()
+        }, 1000)
+
+    }, [settings])
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
             <div>
                 <label>Size</label>
-                <input type='number' value={size} onChange={event => setSize(Number(event.target.value))}/>
+                <input type='number' value={settings.size}
+                       onChange={event => setSettings(prevState => ({
+                           ...prevState,
+                           size: Number(event.target.value)
+                       }))}/>
                 <label>Center</label>
-                <input type='number' value={center.x} onChange={event => setCenter(prevState => ({...prevState, x: Number(event.target.value)}))}/>
-                <input type='number' value={center.y} onChange={event => setCenter(prevState => ({...prevState, y: Number(event.target.value)}))}/>
+                <input type='number' value={settings.center.x}
+                       onChange={event => setSettings(prevState => ({
+                           ...prevState,
+                           center: {...prevState.center, x: Number(event.target.value)}
+                       }))}/>
+                <input type='number' value={settings.center.y}
+                       onChange={event => setSettings(prevState => ({
+                           ...prevState,
+                           center: {...prevState.center, y: Number(event.target.value)}
+                       }))}/>
+                <label>Zoom</label>
+                <input type='number' value={settings.zoom} step={0.1}
+                       onChange={event => setSettings(prevState => ({
+                           ...prevState,
+                           zoom: Number(event.target.value)
+                       }))}/>
             </div>
-            <canvas ref={canvasRef} width={size} height={size} style={{border: "black 1px solid"}}/>
+            <canvas ref={canvasRef} width={settings.size} height={settings.size} style={{border: "black 1px solid"}}/>
         </div>
     );
 }
